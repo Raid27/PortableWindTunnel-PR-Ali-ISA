@@ -9,6 +9,14 @@ A portable, low-cost wind tunnel built on an Arduino Uno R3 with bare-metal AVR 
 ## Table of contents
 
 - [Overview](#overview)
+- [Building the tunnel — mechanical design](#building-the-tunnel--mechanical-design)
+  - [Design principles](#design-principles)
+  - [Test section](#test-section)
+  - [Flow straightener](#flow-straightener)
+  - [Fan mounting](#fan-mounting)
+  - [Pitot tube fabrication](#pitot-tube-fabrication)
+  - [Sealing and checking for leaks](#sealing-and-checking-for-leaks)
+  - [Test objects](#test-objects)
 - [Hardware](#hardware)
   - [Parts list](#parts-list)
   - [Wiring](#wiring)
@@ -49,6 +57,108 @@ The tunnel produces a controllable laminar airflow over a test section. A Pitot 
 | Control | PID controller implemented in AVR C |
 | Simulation | 2D finite-difference CFD in numpy |
 | ML | scikit-learn classifier on time-series features |
+
+---
+
+## Building the tunnel — mechanical design
+
+Before any firmware or code, the physical tunnel needs to be built well. Flow quality in the test section is entirely a function of how well the tunnel is constructed — a leaky or misaligned tunnel gives noisy, unusable data regardless of how good the firmware is.
+
+### Design principles
+
+A low-speed open-circuit tunnel has four functional zones:
+
+```
+[Inlet bell]──[Flow straightener]──[Contraction]──[Test section]──[Diffuser]──[Fan]──[Exhaust]
+```
+
+For a portable benchtop version, the contraction and diffuser can be simplified or omitted, but the flow straightener is non-negotiable.
+
+### Test section
+
+The test section is the heart of the tunnel — it needs to be rigid, sealed, and optically accessible if you want to use smoke visualization.
+
+**Dimensions:** aim for a square cross-section of at least 15 × 15 cm and a length of 25–35 cm. Longer is better — the flow needs space to become uniform after the straightener.
+
+**Material options:**
+
+| Material | Pros | Cons |
+|---|---|---|
+| 6 mm acrylic sheet | Transparent (smoke vis), rigid, easy to cut | Brittle, cracks if over-drilled |
+| 12 mm plywood | Cheap, easy to work, stiff | Opaque, seams need sealing |
+| 3D-printed PLA panels | Precise geometry, easy iteration | Print seams leak, warps under heat |
+
+Acrylic is recommended if you want smoke visualization. Use acrylic cement (not hot glue) at seams — hot glue shrinks and leaks. Sand all interior surfaces smooth; surface roughness adds turbulence.
+
+**Construction steps:**
+
+1. Cut four side panels to identical dimensions using a table saw or laser cutter
+2. Join panels at 90° using acrylic cement or wood glue + corner brackets; check square with a try-square before the adhesive sets
+3. Leave both ends fully open (inlet and outlet)
+4. Drill a Pitot tube port at mid-length, mid-height: a tight 4 mm hole with a rubber grommet to seal around the tube shaft
+5. Optional: cut a 5 × 5 cm access port in one side panel with a sliding cover, for placing test objects without disassembling the tunnel
+
+### Flow straightener
+
+Without a straightener, the fan generates a rotating, turbulent inflow that ruins measurements. A honeycomb straightener breaks up the swirl into parallel streams.
+
+**Construction:**
+
+1. Cut a bundle of drinking straws (or PVC tubes, 4–6 mm ID) to a length of 5–8 cm — longer cells give better straightening
+2. Pack them tightly into a frame that friction-fits into the tunnel inlet cross-section
+3. Zip-tie or tape the bundle on the outside to hold the pack together
+4. The cell length-to-diameter ratio should be at least 6:1 for effective straightening — standard drinking straws at 6 mm ID and 6 cm cut length give exactly 10:1, which is ideal
+
+> **Why this matters:** Without a straightener, measured velocity can vary by ±30% across the test section. With a well-made honeycomb, uniformity within ±5% is achievable on a benchtop build.
+
+### Fan mounting
+
+The fan mounts at the downstream end (blowing out, not in) — this is a **draw-down** configuration. It pulls air through the test section rather than pushing it, which keeps the fan turbulence downstream of your measurements.
+
+**Steps:**
+
+1. Cut a fan mounting plate from 6 mm plywood or acrylic matching your tunnel's cross-section
+2. Cut a circular hole slightly smaller than the fan frame, or use the fan's corner mounting holes
+3. Mount the fan with M3 screws and rubber grommets between the fan frame and plate — this decouples fan vibration from the tunnel structure, which otherwise shows up as low-frequency noise in your pressure readings
+4. Seal around the fan plate edges with foam weatherstripping tape
+
+**Fan placement note:** leave a gap of at least one tunnel width (15–20 cm) between the test section outlet and the fan inlet. This prevents the fan's pressure field from affecting the test section.
+
+### Pitot tube fabrication
+
+A Pitot-static tube has two concentric pressure ports: the stagnation (total pressure) port at the nose, and static pressure ports around the shaft.
+
+**Simple version using brass tube:**
+
+1. Take a 30 cm length of 3 mm OD brass tube (total pressure line)
+2. Slide it inside a 6 mm OD brass tube (static pressure line), centered
+3. Solder the inner tube closed at the nose end, leaving just the tip open facing into the flow
+4. Drill 4–6 × 0.5 mm static ports radially around the 6 mm outer tube, ~8 tube-diameters back from the nose
+5. Seal the annular gap between inner and outer tubes at the rear with epoxy, bringing out two separate silicone tubes: one from the inner (total) and one from the outer (static)
+6. Connect these two silicone tubes to the P1 and P2 ports on the MPXV7002DP
+
+**Alignment:** mount the Pitot tube so the nose faces directly into the flow (0° yaw). A ±5° misalignment introduces a cosine error of ~0.4%, which is acceptable. Beyond ±15°, error grows rapidly.
+
+### Sealing and checking for leaks
+
+Leaks are the most common source of measurement error in a homebuild tunnel. Before any electrical work:
+
+1. Block the outlet with your hand and use a hair dryer at low speed into the inlet — feel for air escaping from seams
+2. Seal any leaks with silicone RTV sealant, not hot glue
+3. Check the Pitot port grommet: it should be snug enough that there's no bypass airflow around the tube shaft
+
+### Test objects
+
+The tunnel becomes much more interesting with things to put in it. Some easy starting objects:
+
+| Object | What you learn |
+|---|---|
+| Flat plate at various angles | Drag vs angle of attack, stall |
+| Cylinder (a pen or dowel) | Bluff body drag, Kármán vortex shedding |
+| Symmetric airfoil (3D-printed NACA 0012) | Lift/drag ratio, compare to CFD |
+| Car body model | Real-world aero comparison |
+
+Mount test objects on a thin rod through a sealed port in the floor of the test section. If you add a small strain gauge or load cell to the mount rod, you can measure drag force directly — a compelling extension to the project.
 
 ---
 
